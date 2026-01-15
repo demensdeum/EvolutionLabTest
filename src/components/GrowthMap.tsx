@@ -90,7 +90,7 @@ const GrowthMap: React.FC = () => {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <Text style={[styles.header, { color: theme.header }]}>Growth Map</Text>
+            <Text style={[styles.header, { color: theme.header }]}>Evolution Lab - Growth Map (Карта развития)</Text>
             <FlatList
                 data={DATA}
                 renderItem={renderItem}
