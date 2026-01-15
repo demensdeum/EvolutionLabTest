@@ -1,11 +1,45 @@
-# Sample Snack app
 
-Open the `App.js` file to start writing some code. You can preview the changes directly on your phone or tablet by scanning the **QR code** or use the iOS or Android emulators. When you're done, click **Save** and share the link!
+## Архитектура Базы Данных (Прогресс пользователя)
 
-When you're ready to see everything that Expo provides (or if you want to use your own editor) you can **Download** your project and use it with [expo cli](https://docs.expo.dev/get-started/installation/#expo-cli)).
+По требованию: **все статусы хранятся явно в БД**.
 
-All projects created in Snack are publicly available, so you can easily share the link to this project via link, or embed it on a web page with the `<>` button.
+### 1. Таблицы
 
-If you're having problems, you can tweet to us [@expo](https://twitter.com/expo) or ask in our [forums](https://forums.expo.dev/c/expo-dev-tools/61) or [Discord](https://chat.expo.dev/).
+*   **`users`**: Пользователи.
+    *   `id` (PK), `email`, `name`
+*   **`lessons`**: Уроки.
+    *   `id` (PK), `title`, `order_index`
+*   **`user_lesson_status`**: Явное состояние каждого урока для пользователя.
+    *   `user_id` (FK)
+    *   `lesson_id` (FK)
+    *   `status` (ENUM: 'locked', 'active', 'done') — **храним состояние здесь**.
+    *   `updated_at` (TIMESTAMP)
 
-Snack is Open Source. You can find the code on the [GitHub repo](https://github.com/expo/snack).
+### 2. Логика работы
+
+Вместо вычислений "на лету", мы обновляем записи в `user_lesson_status` при наступлении событий:
+
+1.  **Регистрация пользователя**:
+    *   Создаем записи для **всех** уроков.
+    *   Урок #1 -> `status: 'active'`
+    *   Остальные -> `status: 'locked'`
+
+2.  **Завершение урока (N)**:
+    *   Транзакция:
+        *   Обновляем урок N -> `status: 'done'`
+        *   Обновляем урок N+1 -> `status: 'active'`
+
+### 3. API и Фронтенд
+
+API становится предельно простым. Мы просто делаем `SELECT` из таблицы `user_lesson_status` и отдаем массив как есть.
+
+```sql
+SELECT l.id, l.title, uls.status 
+FROM lessons l
+JOIN user_lesson_status uls ON l.id = uls.lesson_id
+WHERE uls.user_id = :currentUserId
+ORDER BY l.order_index;
+```
+
+Фронтенд получает "честный" JSON, полностью совпадающий с состоянием в базе.
+
